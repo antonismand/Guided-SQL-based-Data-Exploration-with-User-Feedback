@@ -7,7 +7,7 @@
 
 Evaluation in the SDSS logs for the SELECT/FROM/WHERE clauses and BETWEEN statements.
 
-# Identifier Recommendations
+# Table/Column Recommendations
 
 ## [Algorithm Evaluation](experiments/evaluation.ipynb)
 
@@ -21,10 +21,6 @@ Experiment with different # of recommended items.
 
 Experiment with different thresholds (TH20, TH50, TH100, TH500, TH10_500)
 
-
-## [User Features](experiments/user_features.ipynb)
-
-Experiment with different user contexts for the LinUCB algorithm (e.g. # of Principal Components).
 
 # Predicates Recommendations
 
