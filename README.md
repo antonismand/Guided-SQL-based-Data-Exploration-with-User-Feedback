@@ -21,13 +21,6 @@ Experiment with different # of recommended items.
 
 Experiment with different thresholds (TH20, TH50, TH100, TH500, TH10_500)
 
-## [Algorithm Tuning](experiments/tuning.ipynb)
-
-Fine tuning of various algorithms:
-
-- pUCB (alpha, personalization parameter)
-- UCB (alpha)
-- LinUCB (alpha)
 
 ## [User Features](experiments/user_features.ipynb)
 
