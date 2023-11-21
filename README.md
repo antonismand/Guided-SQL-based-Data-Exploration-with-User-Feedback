@@ -9,21 +9,20 @@ Evaluation in the SDSS logs for the SELECT/FROM/WHERE clauses and BETWEEN statem
 
 # Table/Column Recommendations
 
-## [Algorithm Evaluation](experiments/evaluation.ipynb)
+## [Algorithm Evaluation](offline_evaluation/evaluation.ipynb)
 
 Evaluate all algorithms in the TH50 dataset, for the SELECT, FROM, WHERE clauses.
 
-## [Evaluate different K values](experiments/k.ipynb)
+## [Evaluate different K values](offline_evaluation/k.ipynb)
 
 Experiment with different # of recommended items.
 
-## [Evaluate different TH datasets](experiments/thresholds.ipynb)
+## [Evaluate different TH datasets](offline_evaluation/thresholds.ipynb)
 
 Experiment with different thresholds (TH20, TH50, TH100, TH500, TH10_500)
 
-
 # Predicates Recommendations
 
-## [Evaluation on TH500](experiments/predicates/evaluation.ipynb)
+## [Evaluation on TH500](offline_evaluation/predicates/evaluation.ipynb)
 
-## [Evaluate different K values](experiments/predicates/k.ipynb)
+## [Evaluate different K values](offline_evaluation/predicates/k.ipynb)
