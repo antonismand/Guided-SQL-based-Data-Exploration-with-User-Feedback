@@ -13,13 +13,7 @@ from sqlparse.tokens import DML, Keyword, Name, Punctuation
 
 
 class schema:
-    def __init__(
-        self,
-        file="data/raw/schema.csv",
-        db_stats=False,
-        discretization_method="equal-width",
-    ):
-
+    def __init__(self, file="data/raw/schema.csv"):
         self.schema = {}
         self.schema_idx = {}
         self.n_tables = 0
@@ -43,9 +37,6 @@ class schema:
             columns.pop(0)
             self.schema_idx[id] = columns
 
-        if db_stats:
-            self.db_stats(discretization_method)
-
     def get_arms(self, clause):
         if clause == 1:
             return self.n_tables
@@ -62,16 +53,7 @@ class schema:
                 if column != "__id__" and val == id:
                     return table + "." + column
 
-    def db_stats(self, discretization_method):
-        whitelist = [
-            "specobj.z",
-            "specobj.ra",
-            "specobj.dec",
-            "photoobj.ra",
-            "photoobj.g",
-            "photoobj.dec",
-            "photoobj.u",
-        ]
+    def create_bins(self, discretization_method, columns):
         self.whitelist_columns = []
         self.whitelist_tables = []
         self.stats = {}
@@ -80,7 +62,7 @@ class schema:
 
         bins_idx = 0
 
-        for attr in whitelist:
+        for attr in columns:
             table, col = attr.split(".")
             col_id = self.schema[table][col]
             self.whitelist_columns.append(col_id)

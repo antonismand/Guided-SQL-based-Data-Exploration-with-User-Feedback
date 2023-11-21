@@ -13,8 +13,8 @@ from sqlcompletions.bandits import MAB
 from sqlcompletions.sqlparser import schema
 from tqdm import tqdm
 
-from querybuilder.bandits import (Egreedy, LinUCB, Popular, ThompsonSampling,
-                                  Ucb, pUcb)
+from mabrecs.bandits import (Egreedy, LinUCB, Popular, ThompsonSampling, Ucb,
+                             pUcb)
 
 
 def BinarySearch(lst, x):
@@ -119,7 +119,6 @@ def evaluate(
 
 
 def measure_overlap(a, b):
-
     # check if there is any overlap at all
     if a[1] < b[0] or b[1] < a[0]:
         # print("Overlap of ", a, "with", b, "= 0")
@@ -170,31 +169,44 @@ def evaluate_conditions(
         row = json.loads(line)
         user = row[-1]
 
-        i += 1
-
         for column_id, conditions in row[0].items():
-            pool = np.array(db.bins_idx[int(column_id)])
-            for condition in conditions:
-                recs = bandit.choose_arms(pool, top_k, user)
-                bins = db.bins[recs]
+            if int(column_id) in db.bins_idx:
+                pool = np.array(db.bins_idx[int(column_id)])
+                for condition in conditions:
+                    i += 1
 
-                user_selected = (condition[1], condition[2])
-                rewards = np.array([measure_overlap(x, user_selected) for x in bins])
+                    recs = bandit.choose_arms(pool, top_k, user)
+                    bins = db.bins[recs]
 
-                total_payoff += np.max(rewards)
-
-                if bandit.algorithm == "Most popular":
+                    user_selected = (condition[1], condition[2])
                     rewards = np.array(
-                        [measure_overlap(x, user_selected) for x in db.bins]
+                        [measure_overlap(x, user_selected) for x in bins]
                     )
 
-                bandit.update(recs, rewards, user)
+                    all = db.bins[pool]
+                    all_rewards = np.array(
+                        [measure_overlap(x, user_selected) for x in all]
+                    )
+                    best_reward = np.max(all_rewards)
+                    if best_reward != 0:
+                        total_payoff += np.max(rewards) / best_reward
 
-        if i % 1000 == 0:
-            ctr.append(total_payoff / i)
+                    # total_payoff += np.max(rewards)
 
-        if max_lines and i > max_lines:
-            break
+                    if (
+                        bandit.algorithm == "Most popular"
+                    ):  # give full feedback to popular
+                        rewards = np.array(
+                            [measure_overlap(x, user_selected) for x in db.bins]
+                        )
+
+                    bandit.update(recs, rewards, user)
+
+                    if i % 1000 == 0:
+                        ctr.append(total_payoff / i)
+
+                if max_lines and i > max_lines:
+                    break
 
     return ctr
 
@@ -382,7 +394,6 @@ class run_plot_parameter:
         # .sort_values(by=["Algorithm"], ascending=False)
 
     def run_test(self, test):
-
         parameter_value = test.pop("parameter_value")
         color = test.pop("color")
 
@@ -432,7 +443,7 @@ class run_n_tests:
         for test in self.results:
             ax.plot(test["scores"], label=test["name"], color=test["color"])
 
-        ax.set(xlabel="t/1000", ylabel=ylabel, title=plot_name)
+        ax.set(xlabel="t", ylabel=ylabel, title=plot_name)
         leg = ax.legend()
 
         tikzplotlib_fix_ncols(leg)
