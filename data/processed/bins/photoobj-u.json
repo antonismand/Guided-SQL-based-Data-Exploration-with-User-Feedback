@@ -1,0 +1,9 @@
+{
+    "freedman_diaconis": {
+        "bin_width": 0.1952,
+        "bin_count": 86
+    },
+    "digits": 4,
+    "min": 13.5197,
+    "max": 30.2539
+}
