@@ -8,13 +8,24 @@ import numpy as np
 import pandas as pd
 import tikzplotlib
 from matplotlib import pyplot as plt
-from sqlcompletions import bandits
-from sqlcompletions.bandits import MAB
-from sqlcompletions.sqlparser import schema
+from sdss_eval.sqlparser import schema
+from sdss_eval.paths import PROCESSED_DIR
 from tqdm import tqdm
 
-from mabrecs.bandits import (Egreedy, LinUCB, Popular, ThompsonSampling, Ucb,
-                             pUcb)
+from mabrecs.bandits import Egreedy, Popular, ThompsonSampling, Ucb, pUcb
+
+
+class ReturnAll:
+    """Recommends the whole pool; used to score a binning on its own."""
+
+    def __init__(self):
+        self.algorithm = "Best Bin"
+
+    def choose_arms(self, pool: list, top_k: int, user: str | int = None, update=True):
+        return pool
+
+    def update(self, ids: list[int], rewards: list[int], user: str | int = None):
+        return None
 
 
 def BinarySearch(lst, x):
@@ -24,7 +35,7 @@ def BinarySearch(lst, x):
 
 def evaluate(
     clause: int,
-    bandit: MAB,
+    bandit,
     top_k: int,
     db,
     log_file="log_th50.json",
@@ -35,7 +46,7 @@ def evaluate(
     total_payoff = 0
     ctr = []
 
-    log_file = "data/processed/" + log_file
+    log_file = PROCESSED_DIR / log_file
     log = open(log_file)
     fixed_pool = False
     pool = []
@@ -105,8 +116,10 @@ def evaluate(
                 total_payoff += ap / max_hits
 
             # if i % 10 == 0:
-            ids = recs if bandit.algorithm != "Most popular" else target
-            bandit.update(ids, rewards, user)
+            if bandit.algorithm == "Most popular":  # give full feedback to popular
+                bandit.update(target, None, user)
+            else:
+                bandit.update(recs, rewards, user)
 
             if i % 1000 == 0:
                 ctr.append(total_payoff / i)
@@ -132,7 +145,7 @@ def measure_overlap(a, b):
 
 
 def evaluate_conditions(
-    bandit: MAB,
+    bandit,
     db,
     top_k=5,
     log_file="where_log_th500.json",
@@ -143,7 +156,7 @@ def evaluate_conditions(
     total_payoff = 0
     ctr = []
 
-    log_file = "data/processed/" + log_file
+    log_file = PROCESSED_DIR / log_file
     log = open(log_file)
 
     total_logs = sum(1 for line in open(log_file))
@@ -199,8 +212,9 @@ def evaluate_conditions(
                         rewards = np.array(
                             [measure_overlap(x, user_selected) for x in db.bins]
                         )
-
-                    bandit.update(recs, rewards, user)
+                        bandit.update(np.arange(len(db.bins)), rewards, user)
+                    else:
+                        bandit.update(recs, rewards, user)
 
                     if i % 1000 == 0:
                         ctr.append(total_payoff / i)
@@ -503,7 +517,6 @@ def create_tests(
     db=schema(),
     skip_lines=0.2,
     th=50,
-    feedback=0,
 ):
     tests = []
     if clause == 3:  # predicate suggestion
@@ -520,10 +533,8 @@ def create_tests(
         )
     if "popular" in algorithms:
         tests.append(dict(bandit=Popular(np.zeros(n), init=True), color="k"))
-    if "popularRegion" in algorithms:
-        tests.append(dict(bandit=bandits.PopularRegion(n), color="k"))
-    if "popularPerUser" in algorithms:
-        tests.append(dict(bandit=bandits.PopularPerUser(n), color="teal"))
+    if "popularRegion" in algorithms:  # same baseline, rewarded by region overlap
+        tests.append(dict(bandit=Popular(np.zeros(n), init=True), color="k"))
     if "ucb" in algorithms:
         tests.append(
             dict(
@@ -532,7 +543,7 @@ def create_tests(
         )
 
     if "all" in algorithms:
-        tests.append(dict(bandit=bandits.ReturnAll(), color="m"))
+        tests.append(dict(bandit=ReturnAll(), color="m"))
 
     if "pucb" in algorithms:
         tests.append(
@@ -549,30 +560,14 @@ def create_tests(
         )
     if "thompson" in algorithms:
         tests.append(dict(bandit=ThompsonSampling(init=True, n_arms=n), color="c"))
-    if "hedge" in algorithms:
-        tests.append(dict(bandit=bandits.Hedge(n, learning_rate=0.001), color="m"))
-    if "exp3" in algorithms:
-        tests.append(
-            dict(bandit=bandits.Exp3(n, gamma=0.1, feedback=feedback), color="teal")
-        )
 
     if clause == 3:
         for test in tests:
             test.update(log_file=f"where_log_th{th}.json")
 
     else:
-        for test in tests:  # all algs except LinUCB
+        for test in tests:
             test.update(log_file=f"log_th{th}.json", skip_lines=skip_lines)
-
-        if "linucb" in algorithms:
-            tests.append(
-                dict(
-                    bandit=LinUCB(alpha=0.3, n_arms=n, n_features=15, init=True),
-                    log_file=f"/linucb/log_{clause}_pca14_1_th{th}.json",
-                    skip_lines=skip_lines - 0.1,
-                    color="r",
-                )
-            )
 
     for test in tests:  # all
         test.update(

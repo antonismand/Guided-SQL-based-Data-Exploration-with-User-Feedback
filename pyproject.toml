@@ -1,25 +1,20 @@
 [tool.poetry]
-name = "querybuilder"
+name = "guided-sql-exploration"
 version = "1"
 description = "Generate recommendations in SQL queries using Multi-Armed Bandits"
-authors = [""]
+authors = ["Antonis Mandamadiotis"]
 packages = [
-    { include = "querybuilder" },
     { include = "mabrecs" },
+    { include = "sdss_eval" },
 ]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13"
 numpy = "^1.26.1"
-fastapi = "^0.103.1"
-uvicorn = "^0.23.2"
 redis = "^5.0.1"
-sentry-sdk = {extras = ["fastapi"], version = "^1.32.0"}
 python-dotenv = "^1.0.0"
 mo-sql-parsing = "^9.443.23275"
 pandas = "^2.1.1"
-requests = "^2.31.0"
-pydantic-settings = "^2.0.3"
 
 
 

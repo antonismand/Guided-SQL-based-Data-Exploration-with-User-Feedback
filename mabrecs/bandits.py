@@ -440,6 +440,7 @@ class Popular:
         Parameters
         ----------
         ids : indexes to update
+        rewards : reward of each id (e.g. region overlap); 1 for each id if None
         """
 
-        self.global_payoff[ids] += 1
+        self.global_payoff[ids] += 1 if rewards is None else rewards

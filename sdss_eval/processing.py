@@ -3,13 +3,15 @@ import json
 import multiprocessing as mp
 import os
 from collections import Counter
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import tikzplotlib
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
-from sqlcompletions import sqlparser
+from sdss_eval import sqlparser
+from sdss_eval.paths import PROCESSED_DIR, RAW_DIR
 from tqdm import tqdm
 
 
@@ -23,7 +25,7 @@ class statistics:
     ):
         self.db = sqlparser.schema()
         self.clauses = clauses
-        log_file = "data/processed/" + log_file
+        log_file = PROCESSED_DIR / log_file
         self.popular = self.popular_counters(log_file, max_iterations, skip_lines)
 
     def popular_counters(self, log_file, max_iterations, skip_lines):
@@ -120,11 +122,11 @@ class user_context:
 
         self.log_file = log_file
         self.split = split
-        self.total_logs = sum(1 for line in open("data/processed/" + log_file))
+        self.total_logs = sum(1 for line in open(PROCESSED_DIR / log_file))
         max_iterations = split * self.total_logs
 
         i = 0
-        for line in tqdm(open("data/processed/" + log_file)):
+        for line in tqdm(open(PROCESSED_DIR / log_file)):
             i += 1
             row = json.loads(line)
             user = row[-1]
@@ -179,7 +181,7 @@ class user_context:
 
     def transform(self, add_one=True):
 
-        log = open("data/processed/" + self.log_file)
+        log = open(PROCESSED_DIR / self.log_file)
         skip_lines = round(self.split * self.total_logs)
         for _ in range(skip_lines):
             next(log)
@@ -194,7 +196,7 @@ class user_context:
             out = out.replace("_th", "_1_th")
 
         outfile = open(
-            "data/processed/" + out,
+            PROCESSED_DIR / out,
             "w",
         )
         i = 0
@@ -234,15 +236,15 @@ class create_query_log:
     def __init__(
         self,
         threshold=None,
-        log="data/raw/log.csv",
-        processed_dir="data/processed/",
+        log=RAW_DIR / "log.csv",
+        processed_dir=PROCESSED_DIR,
         lower_threshold=None,
         where=False,
     ):
         self.log = log
         self.parsed = {}
         self.errors = Counter()
-        self.processed_dir = processed_dir
+        self.processed_dir = Path(processed_dir)
         self.where = where
 
         if threshold:
@@ -285,9 +287,9 @@ class create_query_log:
         userid = 0
 
         tsv_hashes = csv.writer(
-            open(self.processed_dir + "hashes.tsv", "wt"), delimiter="\t"
+            open(self.processed_dir / "hashes.tsv", "wt"), delimiter="\t"
         )
-        tsv_log = csv.writer(open(self.processed_dir + "log.tsv", "wt"), delimiter="\t")
+        tsv_log = csv.writer(open(self.processed_dir / "log.tsv", "wt"), delimiter="\t")
 
         # tsv_hashes.writerow(["hash", "query"])
         tsv_log.writerow(["user", "hash"])
@@ -338,9 +340,9 @@ class create_query_log:
                     invalid += 1
         os.system(
             "shuf -o "
-            + str(self.processed_dir + "hashes.tsv")
+            + str(self.processed_dir / "hashes.tsv")
             + " < "
-            + str(self.processed_dir + "hashes.tsv")
+            + str(self.processed_dir / "hashes.tsv")
         )  # shuffle the lines
 
         num_lines -= invalid
@@ -375,7 +377,7 @@ class create_query_log:
             )
         db = sqlparser.schema(db_stats=(self.where == True))
         sqlparser.fix_sqlparse_keywords()
-        with open(self.processed_dir + "hashes.tsv", encoding="ISO-8859-1") as file:
+        with open(self.processed_dir / "hashes.tsv", encoding="ISO-8859-1") as file:
             # next(file)
             tsvreader = csv.reader(file, delimiter="\t")
             for i, line in enumerate(tsvreader):
@@ -407,7 +409,7 @@ class create_query_log:
         num_hashes = sum(
             1
             for line in open(
-                self.processed_dir + "hashes.tsv", "r", encoding="ISO-8859-1"
+                self.processed_dir / "hashes.tsv", "r", encoding="ISO-8859-1"
             )
         )
 
@@ -431,7 +433,7 @@ class create_query_log:
 
         json.dump(
             self.errors.most_common(),
-            open(self.processed_dir + "errors.json", "w"),
+            open(self.processed_dir / "errors.json", "w"),
             indent=4,
         )
         # pickle.dump(parsed, open(processed_dir + "parsed_idx.p", "wb"))
@@ -441,13 +443,13 @@ class create_query_log:
         if self.lower_threshold is not None:
             output_file += str(self.lower_threshold) + "_"
         output_file += str(self.th) + ".json"
-        outfile = open(self.processed_dir + output_file, "w")
-        outfile_not_parsed = open(self.processed_dir + "not_parsed.txt", "w")
+        outfile = open(self.processed_dir / output_file, "w")
+        outfile_not_parsed = open(self.processed_dir / "not_parsed.txt", "w")
 
         not_parsed = 0
         total = 0
         users = {}
-        with open(self.processed_dir + "log.tsv") as file:
+        with open(self.processed_dir / "log.tsv") as file:
             next(file)
             tsvreader = csv.reader(file, delimiter="\t")
             prev_row = None

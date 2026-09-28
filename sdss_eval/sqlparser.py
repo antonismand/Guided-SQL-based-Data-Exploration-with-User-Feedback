@@ -9,11 +9,13 @@ from sqlparse.sql import (Comparison, Function, Identifier, IdentifierList,
                           Operation, Where)
 from sqlparse.tokens import DML, Keyword, Name, Punctuation
 
+from sdss_eval.paths import BINS_DIR, RAW_DIR
+
 # schema = {}
 
 
 class schema:
-    def __init__(self, file="data/raw/schema.csv"):
+    def __init__(self, file=RAW_DIR / "schema.csv"):
         self.schema = {}
         self.schema_idx = {}
         self.n_tables = 0
@@ -70,12 +72,12 @@ class schema:
             if table not in self.whitelist_tables:
                 self.whitelist_tables.append(table)
 
-            with open(f"data/processed/bins/{table}-{col}.json") as json_file:
+            with open(BINS_DIR / f"{table}-{col}.json") as json_file:
                 s = json.load(json_file)
                 self.stats[col_id] = {"min": s["min"], "max": s["max"]}
 
             with open(
-                f"data/processed/bins/{discretization_method}/{table}-{col}.json"
+                BINS_DIR / discretization_method / f"{table}-{col}.json"
             ) as json_file:
                 bins = json.load(json_file)
                 n_bins = len(bins)

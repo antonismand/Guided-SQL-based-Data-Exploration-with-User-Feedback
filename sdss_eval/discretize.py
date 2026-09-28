@@ -1,9 +1,13 @@
 import json
+from os.path import exists
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import tikzplotlib
-from sqlcompletions.sqlparser import schema
+from sklearn.preprocessing import KBinsDiscretizer
+from sdss_eval.sqlparser import schema
+from sdss_eval.paths import BINS_DIR, PROCESSED_DIR
 
 
 def get_num_of_digits(num):
@@ -36,7 +40,7 @@ def save_stats(attributes, df):
         print(f"{table}.{col}: {list(stats.items())} ")
 
         with open(
-            f"data/processed/bins/{table}-{col}.json",
+            BINS_DIR / f"{table}-{col}.json",
             "w+",
             encoding="utf-8",
         ) as f:
@@ -97,7 +101,7 @@ def avg_bin_width_for_attr(attribute):
     db = schema()
     widths = np.array([])
 
-    for line in open("data/processed/where_log_th500.json"):
+    for line in open(PROCESSED_DIR / "where_log_th500.json"):
         row = json.loads(line)[0]
         for attr, val in row.items():
             for cond in val:
@@ -121,7 +125,7 @@ def plot_bin_width_for_attr(attribute, range=None):
     vals = np.array([])
     db = schema()
 
-    for line in open("data/processed/where_log_th500.json"):
+    for line in open(PROCESSED_DIR / "where_log_th500.json"):
         row = json.loads(line)[0]
         for attr, val in row.items():
             for cond in val:
@@ -152,7 +156,7 @@ def plot_hist_for_attr(attribute, range=None, step=0.01, bins=None):
     min_number = np.inf
     max_number = -np.inf
 
-    for line in open("data/processed/where_log_th500.json"):
+    for line in open(PROCESSED_DIR / "where_log_th500.json"):
         row = json.loads(line)[0]
         for attr, val in row.items():
             for cond in val:
@@ -193,3 +197,40 @@ def plot_hist_for_attr(attribute, range=None, step=0.01, bins=None):
         axis_height="\\figH",
         axis_width="\\figW",
     )
+
+
+class Binning:
+    """Bins numerical columns from a table sample in {dir}/samples/{table}.csv."""
+
+    def __init__(self, attributes: list[str], dir=BINS_DIR):
+        self.attributes = attributes
+        self.dir = dir
+
+        table, _ = self.attributes[0].split(".")
+        path = f"{dir}/samples/{table}.csv"
+        if exists(path):
+            self.data = pd.read_csv(path)
+        else:
+            print(f"{path} does not exist.")
+
+    def create_bins(self, n_bins: list[int], strategy="uniform"):
+        for i, attr in enumerate(self.attributes):
+            _, column = attr.split(".")
+
+            X = self.data[column].to_numpy().reshape(-1, 1)
+            est = KBinsDiscretizer(n_bins=n_bins[i], strategy=strategy, subsample=None)
+            est.fit(X)
+
+            self.bins = []
+            for b, bin in enumerate(est.bin_edges_[0]):
+                if b != n_bins[i]:
+                    self.bins.append(
+                        (round(bin, 6), round(est.bin_edges_[0][b + 1], 6))
+                    )
+
+            with open(
+                f"{self.dir}/{strategy}/{attr.replace('.','-')}.json",
+                "w+",
+                encoding="utf-8",
+            ) as f:
+                json.dump(self.bins, f, ensure_ascii=False, indent=4)
